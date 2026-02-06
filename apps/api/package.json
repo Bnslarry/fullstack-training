@@ -15,9 +15,13 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.3.0",
     "@shared/core": "workspace:*",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "pg": "^8.18.0",
+    "prisma": "^7.3.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -47,6 +51,9 @@
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
+    "setupFiles": [
+      "<rootDir>/setup-env.ts"
+    ],
     "moduleFileExtensions": [
       "js",
       "json",

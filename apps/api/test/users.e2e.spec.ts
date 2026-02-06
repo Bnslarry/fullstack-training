@@ -3,6 +3,9 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
+import { PrismaService } from '../src/common/prisma/prisma.service';
+
+let prisma: PrismaService;
 
 describe('Users (e2e)', () => {
   let app: INestApplication;
@@ -14,6 +17,12 @@ describe('Users (e2e)', () => {
     app = moduleRef.createNestApplication();
     app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
+
+    prisma = app.get(PrismaService);
+  });
+
+  beforeEach(async () => {
+    await prisma.user.deleteMany();
   });
 
   afterAll(async () => {
