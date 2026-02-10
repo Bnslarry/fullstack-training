@@ -31,7 +31,11 @@ export class UsersPrismaRepository implements UsersRepository {
     return u ? this.toDTO(u) : null;
   }
 
-  async create(input: { email: string; nickname: string }) {
+  async create(input: {
+    email: string;
+    nickname: string;
+    passwordHash: string;
+  }) {
     const u = await this.prisma.user.create({ data: input });
     return this.toDTO(u);
   }

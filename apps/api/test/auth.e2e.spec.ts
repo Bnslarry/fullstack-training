@@ -2,13 +2,11 @@ import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { PrismaService } from '../src/common/prisma/prisma.service';
 
-let prisma: PrismaService;
-
-describe('Users (e2e)', () => {
+describe('Auth (e2e)', () => {
   let app: INestApplication;
+  let prisma: PrismaService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -22,42 +20,50 @@ describe('Users (e2e)', () => {
         forbidNonWhitelisted: true,
       }),
     );
-    app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
-
     prisma = app.get(PrismaService);
   });
 
   beforeEach(async () => {
-    await prisma.user.deleteMany();
+    await prisma.user.deleteMany({});
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('POST /users creates user', async () => {
+  it('register -> returns accessToken and user', async () => {
     const res = await request(app.getHttpServer())
-      .post('/users')
+      .post('/auth/register')
       .send({ email: 'a@b.com', nickname: 'neo', password: 'password123' })
       .expect(201);
 
-    expect(res.body.data.email).toBe('a@b.com');
-    expect(res.body.data.id).toBeTruthy();
+    expect(res.body.meta.accessToken).toBeTruthy();
+    expect(res.body.data.user.email).toBe('a@b.com');
   });
 
-  it('POST /users duplicate email -> 409 with formatted error', async () => {
+  it('login -> me', async () => {
     await request(app.getHttpServer())
-      .post('/users')
-      .send({ email: 'dup@b.com', nickname: 'n1', password: 'password123' })
+      .post('/auth/register')
+      .send({ email: 'a@b.com', nickname: 'neo', password: 'password123' })
       .expect(201);
 
-    const res = await request(app.getHttpServer())
-      .post('/users')
-      .send({ email: 'dup@b.com', nickname: 'n2', password: 'password123' })
-      .expect(409);
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'a@b.com', password: 'password123' })
+      .expect(201);
 
-    expect(res.body.error).toBeTruthy();
-    expect(res.body.error.status).toBe(409);
+    const token = login.body.meta.accessToken;
+
+    const me = await request(app.getHttpServer())
+      .get('/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(me.body.data.user.email).toBe('a@b.com');
+  });
+
+  it('me without token -> 401', async () => {
+    await request(app.getHttpServer()).get('/me').expect(401);
   });
 });

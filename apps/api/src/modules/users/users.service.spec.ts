@@ -28,9 +28,17 @@ describe('UsersService', () => {
     const repo = makeRepo();
     const svc = new UsersService(repo as any);
 
-    await svc.createUser({ email: 'a@b.com', nickname: 'neo' });
+    await svc.createUser({
+      email: 'a@b.com',
+      nickname: 'neo',
+      password: 'password123',
+    });
     await expect(
-      svc.createUser({ email: 'a@b.com', nickname: 'neo2' }),
+      svc.createUser({
+        email: 'a@b.com',
+        nickname: 'neo2',
+        password: 'password123',
+      }),
     ).rejects.toMatchObject({ status: 409 });
   });
 });
