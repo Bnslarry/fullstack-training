@@ -9,6 +9,7 @@ let prisma: PrismaService;
 
 describe('Users (e2e)', () => {
   let app: INestApplication;
+  let testEmail: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -29,7 +30,11 @@ describe('Users (e2e)', () => {
   });
 
   beforeEach(async () => {
-    await prisma.user.deleteMany();
+    testEmail = `${Date.now()}@bb.com`;
+  });
+
+  afterEach(async () => {
+    await prisma.user.deleteMany({ where: { email: testEmail } });
   });
 
   afterAll(async () => {
@@ -39,22 +44,22 @@ describe('Users (e2e)', () => {
   it('POST /users creates user', async () => {
     const res = await request(app.getHttpServer())
       .post('/users')
-      .send({ email: 'a@b.com', nickname: 'neo', password: 'password123' })
+      .send({ email: testEmail, nickname: 'neo', password: 'password123' })
       .expect(201);
 
-    expect(res.body.data.email).toBe('a@b.com');
+    expect(res.body.data.email).toBe(testEmail);
     expect(res.body.data.id).toBeTruthy();
   });
 
   it('POST /users duplicate email -> 409 with formatted error', async () => {
     await request(app.getHttpServer())
       .post('/users')
-      .send({ email: 'dup@b.com', nickname: 'n1', password: 'password123' })
+      .send({ email: testEmail, nickname: 'n1', password: 'password123' })
       .expect(201);
 
     const res = await request(app.getHttpServer())
       .post('/users')
-      .send({ email: 'dup@b.com', nickname: 'n2', password: 'password123' })
+      .send({ email: testEmail, nickname: 'n2', password: 'password123' })
       .expect(409);
 
     expect(res.body.error).toBeTruthy();
