@@ -22,7 +22,7 @@ describe('Refresh Token Rotation (e2e)', () => {
   });
 
   beforeEach(() => {
-    testEmail = `${Date.now()}@bb.com`;
+    testEmail = `${Date.now()}@refresh.com`;
   });
 
   afterEach(async () => {

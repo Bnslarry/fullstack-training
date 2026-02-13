@@ -22,7 +22,7 @@ describe('Auth refresh cookie (e2e)', () => {
   });
 
   beforeEach(() => {
-    testEmail = `${Date.now()}@bb.com`;
+    testEmail = `${Date.now()}@cookie.com`;
   });
 
   afterEach(async () => {

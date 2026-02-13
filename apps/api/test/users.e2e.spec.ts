@@ -29,8 +29,8 @@ describe('Users (e2e)', () => {
     prisma = app.get(PrismaService);
   });
 
-  beforeEach(async () => {
-    testEmail = `${Date.now()}@bb.com`;
+  beforeEach(() => {
+    testEmail = `${Date.now()}@users.com`;
   });
 
   afterEach(async () => {

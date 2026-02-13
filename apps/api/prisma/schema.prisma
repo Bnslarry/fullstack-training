@@ -19,6 +19,7 @@ model User {
   passwordHash String
   createdAt DateTime @default(now())
   refreshTokens RefreshToken[]
+  articles Article[]
 
   @@index([createdAt])
 }
@@ -35,4 +36,21 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@unique([tokenHash])
+}
+
+model Article {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String?
+  body        String
+
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
 }
