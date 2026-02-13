@@ -25,7 +25,7 @@ describe('Auth (e2e)', () => {
   });
 
   beforeEach(async () => {
-    await prisma.user.deleteMany({});
+    await prisma.user.deleteMany({ where: { email: 'a@b.com' } });
   });
 
   afterAll(async () => {
