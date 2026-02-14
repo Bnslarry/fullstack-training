@@ -53,7 +53,7 @@ export class ArticlesService {
     patch: { title?: string; description?: string; body?: string },
   ) {
     const article = await this.get(slug);
-    if (article.authorId !== authorId) {
+    if (article.author.id !== authorId) {
       throw new ForbiddenException('NOT_AUTHOR');
     }
     const updated = await this.repo.updateBySlug(slug, patch);
@@ -63,7 +63,7 @@ export class ArticlesService {
 
   async remove(slug: string, authorId: string) {
     const article = await this.get(slug);
-    if (article.authorId !== authorId) {
+    if (article.author.id !== authorId) {
       throw new ForbiddenException('NOT_AUTHOR');
     }
     const ok = await this.repo.deleteBySlug(slug);
@@ -71,7 +71,12 @@ export class ArticlesService {
     return { ok: true };
   }
 
-  async list(page: number, pageSize: number) {
-    return this.repo.list({ page, pageSize });
+  async list(input: {
+    page: number;
+    pageSize: number;
+    authorEmail?: string;
+    q?: string;
+  }) {
+    return this.repo.list(input);
   }
 }

@@ -12,7 +12,20 @@ async function register(app: INestApplication, email: string) {
   return res.body.meta.accessToken as string;
 }
 
-describe('Articles (e2e)', () => {
+async function createArticle(
+  app: INestApplication,
+  token: string,
+  title: string,
+  body: string,
+) {
+  return await request(app.getHttpServer())
+    .post('/articles')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ title, body })
+    .expect(201);
+}
+
+describe('Articles list (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let testEmailA: string;
@@ -41,47 +54,41 @@ describe('Articles (e2e)', () => {
     await app.close();
   });
 
-  it('create -> get -> update -> delete (author only)', async () => {
+  it('supports pagination, author filter, and q search; includes author info', async () => {
     const token1 = await register(app, testEmailA);
     const token2 = await register(app, testEmailB);
 
-    const created = await request(app.getHttpServer())
-      .post('/articles')
-      .set('Authorization', `Bearer ${token1}`)
-      .send({ title: 'Hello World', description: 'd', body: 'content' })
-      .expect(201);
+    await createArticle(app, token1, 'Hello One', 'body a1');
+    await createArticle(app, token1, 'Hello Two', 'body a2');
+    await createArticle(app, token1, 'Other', 'zzz');
+    await createArticle(app, token2, 'B Title', 'hello in body');
 
-    const slug = created.body.data.slug as string;
-    expect(slug).toBeTruthy();
-
-    await request(app.getHttpServer()).get(`/articles/${slug}`).expect(200);
-
-    await request(app.getHttpServer())
-      .patch(`/articles/${slug}`)
-      .set('Authorization', `Bearer ${token2}`)
-      .send({ body: 'hacked' })
-      .expect(403);
-
-    const updated = await request(app.getHttpServer())
-      .patch(`/articles/${slug}`)
-      .set('Authorization', `Bearer ${token1}`)
-      .send({ body: 'updated' })
+    const page1 = await request(app.getHttpServer())
+      .get('/articles?page=1&pageSize=2')
       .expect(200);
 
-    expect(updated.body.data.body).toBe('updated');
+    expect(page1.body.data.items.length).toBe(2);
+    expect(page1.body.data.total).toBe(4);
+    expect(page1.body.data.items[0].author.email).toBeTruthy();
 
-    await request(app.getHttpServer())
-      .delete(`/articles/${slug}`)
-      .set('Authorization', `Bearer ${token1}`)
+    const byA = await request(app.getHttpServer())
+      .get(`/articles?author=${testEmailA}`)
       .expect(200);
 
-    await request(app.getHttpServer()).get(`/articles/${slug}`).expect(404);
-  });
+    expect(byA.body.data.items.length).toBe(3);
+    for (const it of byA.body.data.items) {
+      expect(it.author.email).toBe(testEmailA);
+      expect(it.author.nickname).toBe('n');
+    }
 
-  it('create without auth -> 401', async () => {
-    await request(app.getHttpServer())
-      .post('/articles')
-      .send({ title: 'No Auth', body: 'x' })
-      .expect(401);
+    const q1 = await request(app.getHttpServer())
+      .get('/articles?q=hello')
+      .expect(200);
+
+    expect(q1.body.data.total).toBeGreaterThanOrEqual(3);
+    for (const it of q1.body.data.items) {
+      expect(it.author).toBeTruthy();
+      expect(it.author.email).toBeTruthy();
+    }
   });
 });

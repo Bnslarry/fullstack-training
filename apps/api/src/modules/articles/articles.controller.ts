@@ -33,10 +33,17 @@ export class ArticlesController {
   async list(
     @Query('page') pageStr?: string,
     @Query('pageSize') pageSizeStr?: string,
+    @Query('author') authorEmail?: string,
+    @Query('q') q?: string,
   ) {
     const page = Math.max(1, Number(pageStr || 1));
     const pageSize = Math.min(50, Math.max(1, Number(pageSizeStr || 10)));
-    const { items, total } = await this.articles.list(page, pageSize);
+    const { items, total } = await this.articles.list({
+      page,
+      pageSize,
+      authorEmail: authorEmail || undefined,
+      q: q || undefined,
+    });
     return { data: { items, page, pageSize, total } };
   }
 

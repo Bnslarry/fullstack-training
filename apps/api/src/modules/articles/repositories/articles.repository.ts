@@ -1,13 +1,19 @@
 export const ARTICLES_REPOSITORY = Symbol('ARTICLES_REPOSITORY');
 
-export interface ArticleDTO {
+export interface AuthorDTO {
+  id: string;
+  email: string;
+  nickname: string;
+}
+
+export interface ArticleViewDTO {
   slug: string;
   title: string;
   description?: string | null;
   body: string;
-  authorId: string;
   createdAt: number;
   updatedAt: number;
+  author: AuthorDTO;
 }
 
 export interface ArticlesRepository {
@@ -17,15 +23,15 @@ export interface ArticlesRepository {
     description?: string;
     body: string;
     authorId: string;
-  }): Promise<ArticleDTO>;
-  findBySlug(slug: string): Promise<ArticleDTO | null>;
+  }): Promise<ArticleViewDTO>;
+  findBySlug(slug: string): Promise<ArticleViewDTO | null>;
   updateBySlug(
     slug: string,
     input: { title?: string; description?: string; body?: string },
-  ): Promise<ArticleDTO | null>;
+  ): Promise<ArticleViewDTO | null>;
   deleteBySlug(slug: string): Promise<boolean>;
   list(input: {
     page: number;
     pageSize: number;
-  }): Promise<{ items: ArticleDTO[]; total: number }>;
+  }): Promise<{ items: ArticleViewDTO[]; total: number }>;
 }
