@@ -14,6 +14,7 @@ export interface ArticleViewDTO {
   createdAt: number;
   updatedAt: number;
   author: AuthorDTO;
+  tagList: string[];
 }
 
 export interface ArticlesRepository {
@@ -23,11 +24,17 @@ export interface ArticlesRepository {
     description?: string;
     body: string;
     authorId: string;
+    tagList: string[];
   }): Promise<ArticleViewDTO>;
   findBySlug(slug: string): Promise<ArticleViewDTO | null>;
   updateBySlug(
     slug: string,
-    input: { title?: string; description?: string; body?: string },
+    input: {
+      title?: string;
+      description?: string;
+      body?: string;
+      tagList?: string[];
+    },
   ): Promise<ArticleViewDTO | null>;
   deleteBySlug(slug: string): Promise<boolean>;
   list(input: {

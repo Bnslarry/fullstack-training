@@ -3,6 +3,12 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import type { ArticleViewDTO, ArticlesRepository } from './articles.repository';
 
+type Tag = {
+  tag: {
+    name: string;
+  };
+};
+
 type ArticleRecord = {
   slug: string;
   title: string;
@@ -15,6 +21,7 @@ type ArticleRecord = {
   };
   createdAt: Date;
   updatedAt: Date;
+  tags: Tag[];
 };
 
 @Injectable()
@@ -34,6 +41,7 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
         email: a.author.email,
         nickname: a.author.nickname,
       },
+      tagList: (a.tags ?? []).map((x: Tag) => x.tag.name),
     };
   }
 
@@ -43,14 +51,39 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
     description?: string;
     body: string;
     authorId: string;
+    tagList: string[];
   }) {
+    const { slug, title, description, body, authorId, tagList } = input;
     const article = await this.prisma.article.create({
-      data: input,
-      include: {
-        author: { select: { id: true, email: true, nickname: true } },
-      },
+      data: { slug, title, description, body, authorId },
     });
-    return this.toViewDTO(article);
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const tagIds: string[] = [];
+
+      for (const name of tagList) {
+        const tag = await tx.tag.upsert({
+          where: { name },
+          update: {},
+          create: { name },
+          select: { id: true },
+        });
+        tagIds.push(tag.id);
+      }
+
+      if (tagIds.length) {
+        await tx.articleTag.createMany({
+          data: tagIds.map((tagId) => ({ articleId: article.id, tagId })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    const created = await this.findBySlug(article.slug);
+    if (!created) {
+      throw new Error('Article was created but could not be reloaded');
+    }
+    return created;
   }
 
   async findBySlug(slug: string) {
@@ -58,6 +91,9 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
       where: { slug },
       include: {
         author: { select: { id: true, email: true, nickname: true } },
+        tags: {
+          include: { tag: { select: { name: true } } },
+        },
       },
     });
     return article ? this.toViewDTO(article) : null;
@@ -65,20 +101,51 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
 
   async updateBySlug(
     slug: string,
-    input: { title?: string; description?: string; body?: string },
+    input: {
+      title?: string;
+      description?: string;
+      body?: string;
+      tagList?: string[];
+    },
   ) {
     const exists = await this.prisma.article.findUnique({ where: { slug } });
     if (!exists) {
       return null;
     }
-    const article = await this.prisma.article.update({
-      where: { slug },
-      data: input,
-      include: {
-        author: { select: { id: true, email: true, nickname: true } },
-      },
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const { title, description, body } = input;
+      const a = await tx.article.update({
+        where: { slug },
+        data: { title, description, body },
+        select: { id: true, slug: true },
+      });
+
+      const { tagList } = input;
+      const tagListProvided = Array.isArray(tagList);
+      if (tagListProvided) {
+        await tx.articleTag.deleteMany({ where: { articleId: a.id } });
+
+        const tagIds: string[] = [];
+        for (const name of tagList) {
+          const tag = await tx.tag.upsert({
+            where: { name },
+            update: {},
+            create: { name },
+            select: { id: true },
+          });
+          tagIds.push(tag.id);
+        }
+
+        if (tagIds.length) {
+          await tx.articleTag.createMany({
+            data: tagIds.map((tagId) => ({ articleId: a.id, tagId })),
+            skipDuplicates: true,
+          });
+        }
+      }
     });
-    return this.toViewDTO(article);
+    return this.findBySlug(slug);
   }
 
   async deleteBySlug(slug: string) {
@@ -95,8 +162,9 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
     pageSize: number;
     authorEmail?: string;
     q?: string;
+    tag?: string;
   }) {
-    const { page, pageSize, authorEmail, q } = input;
+    const { page, pageSize, authorEmail, q, tag } = input;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.ArticleWhereInput = {};
@@ -108,6 +176,10 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
       ];
     }
 
+    if (tag) {
+      where.tags = { some: { tag: { name: tag } } };
+    }
+
     const [total, items] = await this.prisma.$transaction([
       this.prisma.article.count({ where }),
       this.prisma.article.findMany({
@@ -117,6 +189,9 @@ export class ArticlesPrismaRepository implements ArticlesRepository {
         take: pageSize,
         include: {
           author: { select: { id: true, email: true, nickname: true } },
+          tags: {
+            include: { tag: { select: { name: true } } },
+          },
         },
       }),
     ]);

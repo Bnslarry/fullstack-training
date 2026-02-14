@@ -19,6 +19,12 @@ function slugify(title: string) {
     .slice(0, 80);
 }
 
+function normalizeTagList(tagList: string[]) {
+  return Array.from(
+    new Set(tagList.map((t) => t.trim().toLowerCase()).filter(Boolean)),
+  );
+}
+
 @Injectable()
 export class ArticlesService {
   constructor(
@@ -30,13 +36,17 @@ export class ArticlesService {
     description?: string;
     body: string;
     authorId: string;
+    tagList?: string[];
   }) {
     const base = slugify(input.title);
     const try1 = base || 'article';
     const exists = await this.repo.findBySlug(try1);
 
     const slug = exists ? `${try1}-${Date.now().toString(36)}` : try1;
-    return this.repo.create({ ...input, slug });
+
+    const tagList = input.tagList ? normalizeTagList(input.tagList) : [];
+
+    return this.repo.create({ ...input, slug, tagList });
   }
 
   async get(slug: string) {
@@ -50,13 +60,21 @@ export class ArticlesService {
   async update(
     slug: string,
     authorId: string,
-    patch: { title?: string; description?: string; body?: string },
+    patch: {
+      title?: string;
+      description?: string;
+      body?: string;
+      tagList?: string[];
+    },
   ) {
     const article = await this.get(slug);
     if (article.author.id !== authorId) {
       throw new ForbiddenException('NOT_AUTHOR');
     }
-    const updated = await this.repo.updateBySlug(slug, patch);
+    const normalizedPatch = Array.isArray(patch.tagList)
+      ? { ...patch, tagList: normalizeTagList(patch.tagList) }
+      : patch;
+    const updated = await this.repo.updateBySlug(slug, normalizedPatch);
     if (!updated) throw new NotFoundException('ARTICLE_NOT_FOUND');
     return updated;
   }
@@ -76,6 +94,7 @@ export class ArticlesService {
     pageSize: number;
     authorEmail?: string;
     q?: string;
+    tag?: string;
   }) {
     return this.repo.list(input);
   }

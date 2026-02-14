@@ -35,6 +35,7 @@ export class ArticlesController {
     @Query('pageSize') pageSizeStr?: string,
     @Query('author') authorEmail?: string,
     @Query('q') q?: string,
+    @Query('tag') tag?: string,
   ) {
     const page = Math.max(1, Number(pageStr || 1));
     const pageSize = Math.min(50, Math.max(1, Number(pageSizeStr || 10)));
@@ -43,6 +44,7 @@ export class ArticlesController {
       pageSize,
       authorEmail: authorEmail || undefined,
       q: q || undefined,
+      tag: tag ? tag.trim().toLowerCase() : undefined,
     });
     return { data: { items, page, pageSize, total } };
   }
