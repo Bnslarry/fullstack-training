@@ -1,4 +1,4 @@
-# Day 09 - Articles 模块落地与 e2e 稳定性修复
+# Day 08 - Articles 模块落地与 e2e 稳定性修复
 
 ## 今日目标
 
